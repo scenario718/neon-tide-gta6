@@ -1,53 +1,81 @@
-// Keyboard and pointer input. Held keys give a steering direction; one-shot presses (start or
-// restart, pause) are queued as bit flags and taken once by the loop, so a press between two
-// frames is never lost and never counted twice.
+// input.js — keyboard and mouse state for Neon Tide. Other systems read the
+// exported `keys` set and `mouse` object; edge-triggered presses are tracked
+// per frame so "press E to enter" fires once, not sixty times a second.
 
-export const ACTION_CONFIRM = 1;
-export const ACTION_PAUSE = 2;
+export const keys = new Set();
+const pressedThisFrame = new Set();
 
-const LEFT = new Set(['ArrowLeft', 'KeyA']);
-const RIGHT = new Set(['ArrowRight', 'KeyD']);
-const CONFIRM = new Set(['Space', 'Enter']);
-const PAUSE = new Set(['KeyP', 'Escape']);
+export const mouse = {
+  x: 0,
+  y: 0,
+  down: false,
+  clicked: false, // left button went down this frame
+};
 
-export function createInput(target) {
-  let left = false;
-  let right = false;
-  let actions = 0;
+const GAME_CODES = new Set([
+  'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space',
+  'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyE', 'KeyF', 'KeyR', 'KeyP',
+  'ShiftLeft', 'ShiftRight', 'Enter', 'Escape',
+]);
 
-  window.addEventListener('keydown', (event) => {
-    if (LEFT.has(event.code)) left = true;
-    else if (RIGHT.has(event.code)) right = true;
-    else if (CONFIRM.has(event.code)) {
-      if (!event.repeat) actions |= ACTION_CONFIRM;
-    } else if (PAUSE.has(event.code)) {
-      if (!event.repeat) actions |= ACTION_PAUSE;
-    } else return;
-    event.preventDefault();
+export function initInput(canvas) {
+  window.addEventListener('keydown', (ev) => {
+    if (GAME_CODES.has(ev.code)) ev.preventDefault();
+    if (!ev.repeat) pressedThisFrame.add(ev.code);
+    keys.add(ev.code);
   });
-  window.addEventListener('keyup', (event) => {
-    if (LEFT.has(event.code)) left = false;
-    else if (RIGHT.has(event.code)) right = false;
+  window.addEventListener('keyup', (ev) => {
+    keys.delete(ev.code);
   });
-  // A key released while the tab is hidden never sends keyup: let go of everything on blur.
   window.addEventListener('blur', () => {
-    left = false;
-    right = false;
+    keys.clear();
+    mouse.down = false;
   });
-  target.addEventListener('pointerdown', () => {
-    actions |= ACTION_CONFIRM;
+  canvas.addEventListener('mousemove', (ev) => {
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = ((ev.clientX - rect.left) / rect.width) * canvas.width;
+    mouse.y = ((ev.clientY - rect.top) / rect.height) * canvas.height;
   });
+  canvas.addEventListener('mousedown', (ev) => {
+    // A click also reports where the pointer is, so a first action that is
+    // a click (no prior move over the canvas) still lands on its button.
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = ((ev.clientX - rect.left) / rect.width) * canvas.width;
+    mouse.y = ((ev.clientY - rect.top) / rect.height) * canvas.height;
+    if (ev.button === 0) {
+      mouse.down = true;
+      mouse.clicked = true;
+    }
+  });
+  window.addEventListener('mouseup', (ev) => {
+    if (ev.button === 0) mouse.down = false;
+  });
+  canvas.addEventListener('contextmenu', (ev) => ev.preventDefault());
+}
 
-  return {
-    /** -1 for left, 1 for right, 0 for neither or both. */
-    direction() {
-      return (right ? 1 : 0) - (left ? 1 : 0);
-    },
-    /** The one-shot presses since the last call, as ACTION_* flags. */
-    takeActions() {
-      const taken = actions;
-      actions = 0;
-      return taken;
-    },
-  };
+// True only on the frame the key first went down.
+export function pressed(code) {
+  return pressedThisFrame.has(code);
+}
+
+export function down(...codes) {
+  return codes.some((c) => keys.has(c));
+}
+
+// Called at the very end of each frame by the main loop.
+export function endFrameInput() {
+  pressedThisFrame.clear();
+  mouse.clicked = false;
+}
+
+// Movement axes from WASD or the arrow keys: x/y in -1..1, not normalised
+// (callers normalise so diagonals are not faster).
+export function moveAxes() {
+  let x = 0;
+  let y = 0;
+  if (down('KeyA', 'ArrowLeft')) x -= 1;
+  if (down('KeyD', 'ArrowRight')) x += 1;
+  if (down('KeyW', 'ArrowUp')) y -= 1;
+  if (down('KeyS', 'ArrowDown')) y += 1;
+  return { x, y };
 }
