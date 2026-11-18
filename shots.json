@@ -1,5 +1,1 @@
-[
-  { "name": "1-start.jpg", "query": "?shot=start&seed=1" },
-  { "name": "2-play.jpg", "query": "?shot=play&seed=1" },
-  { "name": "3-end.jpg", "query": "?shot=end&seed=1" }
-]
+[{"name":"1-cover.jpg","note":"Driving downtown in Mari's sedan: HUD, minimap, two wanted stars, a police car closing in, and the gold objective marker ahead.","query":"?scene=drive"},{"name":"2-chase.jpg","note":"Four-star police pursuit down the coastal avenue in a stolen Vireo GT.","query":"?scene=chase"},{"name":"3-mission.jpg","note":"Vera's Exit in progress: timed escape drive to the pier with the wanted level held at two stars.","query":"?scene=mission"},{"name":"4-onfoot.jpg","note":"On foot at Marina Beach: pedestrians, palms, the ocean, and the yellow Solstice Roadster waiting to be borrowed.","query":"?scene=onfoot"}]
